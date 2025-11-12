@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chennai Air Quality Monitor</title>
+
+  <!-- Fonts and Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+  <style>
+    :root {
+      --primary-blue: #007aff;
+      --dark-blue: #0051a8;
+      --glass-bg: rgba(255, 255, 255, 0.15);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      --card-radius: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* 🌆 Background image with Apple-style lighting */
+    body {
+      background: url('download.jfif') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      min-height: 100vh;
+      padding: 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ✨ Soft light overlay for iOS feel */
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255,255,255,0.15), transparent 60%),
+                  radial-gradient(circle at bottom right, rgba(0,0,0,0.4), transparent 70%);
+      z-index: 0;
+    }
+
+    .container { max-width: 1400px; margin: auto; position: relative; z-index: 2; }
+
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.5rem 0; margin-bottom: 1.5rem;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 🖤 Title in black */
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: black; /* black title */
+      text-shadow: none;
+    }
+
+    .page-title i {
+      color: black; /* black icon */
+    }
+
+    .page-subtitle { color: #e0e0e0; margin-top: 0.25rem; }
+
+    /* 🌫️ iPhone-style glass cards */
+    .locations-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .location-card {
+      background: var(--glass-bg);
+      border-radius: var(--card-radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      color: #fff;
+      position: relative;
+      transition: all 0.4s ease;
+      overflow: hidden;
+    }
+
+    .location-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 10px 40px rgba(0, 122, 255, 0.35);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .map-marker { position: absolute; top: 1rem; right: 1rem; color: #fff; font-size: 1.5rem; opacity: 0.9; }
+
+    .location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+
+    .aqi-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      color: #fff;
+      backdrop-filter: blur(8px);
+    }
+
+    .aqi-good { background: rgba(0, 228, 0, 0.7); color: #000; }
+    .aqi-moderate { background: rgba(255, 255, 0, 0.7); color: #000; }
+    .aqi-unhealthy { background: rgba(255, 0, 0, 0.7); }
+    .aqi-very-unhealthy { background: rgba(143, 63, 151, 0.7); }
+    .aqi-hazardous { background: rgba(126, 0, 35, 0.7); }
+
+    .metric-row { display: flex; justify-content: space-between; margin: 0.4rem 0; color: #f3f3f3; }
+
+    .btn-details {
+      width: 100%; padding: 0.6rem 1rem;
+      background: rgba(0, 122, 255, 0.6);
+      border: none; border-radius: 10px;
+      color: #fff; cursor: pointer; margin-top: 0.75rem;
+      font-weight: 500; transition: 0.3s;
+      box-shadow: 0 0 10px rgba(0,122,255,0.3);
+    }
+    .btn-details:hover { background: rgba(0, 122, 255, 0.9); box-shadow: 0 0 20px rgba(0,122,255,0.6); }
+
+    /* 📊 Chart container - darker glass */
+    .chart-container {
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: var(--card-radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      margin-bottom: 2rem;
+      color: #fff;
+    }
+
+    /* 📄 Details section */
+    .details-section {
+      display: none;
+      flex-direction: column;
+      background: var(--glass-bg);
+      padding: 2rem;
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      color: #fff;
+      margin-top: 2rem;
+    }
+
+    .back-btn {
+      background: rgba(0, 122, 255, 0.3);
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+      color: #fff;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      transition: 0.3s;
+    }
+    .back-btn:hover { background: rgba(0, 122, 255, 0.6); }
+
+    footer {
+      background: rgba(0, 0, 0, 0.4);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      margin-top: 2rem;
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1 class="page-title"><i class="fas fa-globe-asia"></i> Chennai Air Quality Monitoring</h1>
+        <p class="page-subtitle" id="page-subtitle">Overview of current AQI, PM, and CO₂ levels</p>
+      </div>
+      <div class="nav-links">
+        <i class="fas fa-search nav-icon"></i>
+        <i class="fas fa-bell nav-icon"></i>
+        <i class="fas fa-cog nav-icon"></i>
+      </div>
+    </header>
+
+    <section id="overview">
+      <div class="locations-grid" id="data-container"></div>
+      <div class="chart-container">
+        <h3 class="chart-title">Chennai Pollution Comparison</h3>
+        <div id="comparison-chart" style="width:100%;height:300px;"></div>
+      </div>
+    </section>
+
+    <section id="details" class="details-section">
+      <button class="back-btn" onclick="showOverview()"><i class="fas fa-arrow-left"></i> Back to Overview</button>
+      <h3 id="details-title"></h3>
+      <div id="details-content"></div>
+      <div id="location-chart" style="width:100%;height:320px;"></div>
+    </section>
+
+    <footer>&copy; 2025 Chennai Air Quality Monitoring Network</footer>
+  </div>
+
+  <script>
+    const data = {
+      "locations": [
+        { "id":"easwari", "name":"Easwari College area", "aqi":145, "pm25":65, "pm10":110, "co2":420, "comment":"Moderate-high pollution, likely due to traffic & construction nearby" },
+        { "id":"dlf", "name":"DLF IT Park, Manapakkam", "aqi":160, "pm25":75, "pm10":120, "co2":450, "comment":"IT park zone with heavy vehicular & commercial activity" },
+        { "id":"porur", "name":"Porur Ram Nagar", "aqi":170, "pm25":82, "pm10":130, "co2":460, "comment":"West Chennai area, more dust & traffic—higher PM values" },
+        { "id":"kk", "name":"KK Nagar", "aqi":150, "pm25":70, "pm10":115, "co2":430, "comment":"Residential mixed zone, still significant particulate matter" },
+        { "id":"lic", "name":"LIC Area", "aqi":140, "pm25":60, "pm10":105, "co2":440, "comment":"Slightly better than some other zones but still elevated" }
+      ]
+    };
+
+    function getAQIClass(aqi){
+      if(aqi<=50) return "aqi-good";
+      if(aqi<=100) return "aqi-moderate";
+      if(aqi<=150) return "aqi-unhealthy";
+      if(aqi<=200) return "aqi-very-unhealthy";
+      return "aqi-hazardous";
+    }
+
+    const container = document.getElementById("data-container");
+    const labels = [], pm25Data = [], pm10Data = [], co2Data = [];
+
+    data.locations.forEach(loc=>{
+      const card = document.createElement("div");
+      card.classList.add("location-card");
+      const aqiClass = getAQIClass(loc.aqi);
+      card.innerHTML = `
+        <i class="fas fa-map-marker-alt map-marker"></i>
+        <div class="location-header">
+          <h3 class="location-name">${loc.name}</h3>
+          <div class="aqi-value ${aqiClass}">${loc.aqi}</div>
+        </div>
+        <div class="metric-row"><span>PM₂.₅:</span><span>${loc.pm25} µg/m³</span></div>
+        <div class="metric-row"><span>PM₁₀:</span><span>${loc.pm10} µg/m³</span></div>
+        <div class="metric-row"><span>CO₂:</span><span>${loc.co2} ppm</span></div>
+        <button class="btn-details" onclick="showDetails('${loc.id}')">View Details <i class="fas fa-arrow-right"></i></button>
+      `;
+      container.appendChild(card);
+      labels.push(loc.name);
+      pm25Data.push(loc.pm25);
+      pm10Data.push(loc.pm10);
+      co2Data.push(loc.co2);
+    });
+
+    const chart = echarts.init(document.getElementById('comparison-chart'));
+    const chartOptions = {
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['PM₂.₅','PM₁₀','CO₂'], bottom: 0 },
+      xAxis: { type: 'category', data: labels },
+      yAxis: { type: 'value', name: 'µg/m³ / ppm' },
+      series: [
+        { name:'PM₂.₅', type:'bar', data: pm25Data, color:'#4e79a7' },
+        { name:'PM₁₀', type:'bar', data: pm10Data, color:'#f28e2c' },
+        { name:'CO₂', type:'line', data: co2Data, color:'#e15759', lineStyle:{width:3} }
+      ]
+    };
+    chart.setOption(chartOptions);
+
+    function showDetails(id){
+      const loc = data.locations.find(l=>l.id===id);
+      if(!loc) return;
+
+      document.getElementById('overview').style.display = 'none';
+      document.getElementById('details').style.display = 'flex';
+      document.getElementById('page-subtitle').textContent = loc.name;
+      document.getElementById('details-title').textContent = loc.name + ' - Detailed Analysis';
+      document.getElementById('details-content').innerHTML = `
+        <p><strong>AQI:</strong> ${loc.aqi}</p>
+        <p><strong>PM₂.₅:</strong> ${loc.pm25} µg/m³</p>
+        <p><strong>PM₁₀:</strong> ${loc.pm10} µg/m³</p>
+        <p><strong>CO₂:</strong> ${loc.co2} ppm</p>
+        <p><em>${loc.comment}</em></p>
+      `;
+
+      const locChart = echarts.init(document.getElementById('location-chart'));
+      const locOptions = {
+        tooltip: { trigger: 'axis' },
+        xAxis: { type:'category', data:['PM₂.₅','PM₁₀','CO₂'] },
+        yAxis: { type:'value', name:'µg/m³ / ppm' },
+        series: [{
+          type:'bar',
+          data:[loc.pm25, loc.pm10, loc.co2],
+          itemStyle:{ color:(params)=>['#4e79a7','#f28e2c','#e15759'][params.dataIndex] }
+        }]
+      };
+      locChart.setOption(locOptions);
+      window.addEventListener('resize',()=>locChart.resize());
+    }
+
+    function showOverview(){
+      document.getElementById('overview').style.display = 'block';
+      document.getElementById('details').style.display = 'none';
+      document.getElementById('page-subtitle').textContent = "Overview of current AQI, PM, and CO₂ levels";
+    }
+
+    window.addEventListener('resize', ()=>chart.resize());
+  </script>
+</body>
+</html>
